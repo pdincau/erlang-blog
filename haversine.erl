@@ -12,5 +12,6 @@ distance(Lng1, Lat1, Lng2, Lat2) ->
 
     C = 2 * math:asin(math:sqrt(A)),
     
+    %% consider Earth radius equal to 6371km
     Km = 6371 * C,
     Km.
