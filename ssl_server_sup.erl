@@ -18,6 +18,14 @@
 
 -define(SERVER, ?MODULE).
 
+-define(SSLOPTIONS, [{certfile, "/path/to/certificate.pem"},
+                     {keyfile, "/path/to/key.pem"},
+                     {password, "password"},
+                     {mode, binary},
+                     {packet, 0},
+                     {backlog, 5},
+                     {active, false}]).
+
 %%%===================================================================
 %%% API functions
 %%%===================================================================
@@ -51,14 +59,8 @@ start_link() ->
 %%--------------------------------------------------------------------
 init([]) ->
     ssl:start(),
-    Options = [{certfile, "/path/to/certificate.pem"},
-               {keyfile, "/path/to/key.pem"},
-               {password, "password"},
-               {mode, binary},
-               {packet, 0},
-               {active, false}],
     
-    {ok, LSocket} = ssl:listen(5555, Options),
+    {ok, LSocket} = ssl:listen(5555, ?SSLOPTIONS),
 
     spawn_link(fun empty_listeners/0),
 
