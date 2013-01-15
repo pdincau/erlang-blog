@@ -4,7 +4,7 @@ erlang-blog
 In this git you may find some of the Erlang code I use in my blog posts.
 
 SSL Tutorial
-
+------------
 A tutorial on SSL and Erlang.
 
 Files needed:
@@ -13,7 +13,7 @@ Files needed:
 * ssl_server_sup.erl
 
 Haversine Function
-
+------------------
 
 An Erlang implementation of the Haversine formula.
 
