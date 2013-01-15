@@ -103,14 +103,6 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
-handle_info({ssl_closed, _Socket}, State) ->
-    io:format("Connection closed by peer.~n", []),
-    {stop, normal, State};
-
-handle_info({ssl, _Socket, Data}, State) ->
-    io:format("Received: ~p~n", [Data]),
-    {noreply, State};
-
 handle_info(_Info, State) ->
     io:format("Received unknown message: ~p~n", [_Info]),
     {noreply, State}.
