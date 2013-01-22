@@ -19,7 +19,7 @@
 
 -define(SERVER, ?MODULE). 
 
--record(state, {socket}).
+-record(state, {next, socket}).
 
 %%%===================================================================
 %%% API
@@ -87,8 +87,12 @@ handle_cast(accept, #state{socket = LSocket} = State) ->
     {ok, NewSocket} = ssl:transport_accept(LSocket),
     ok = ssl:ssl_accept(NewSocket),
     ssl_server_sup:start_socket(),
-    io:format("Connection opened.~n", []),
-    {noreply, State#state{socket = NewSocket}};
+    gen_server:cast(self(), rcv_headers),
+    {noreply, State#state{next = headers, socket = NewSocket}};
+
+%handle_cast(get_headers, #state{next = headers, socket = Socket} = State) ->
+%    Headers = ssl:recv(Socket, 3),
+%    {noreply, State#state{next = headers, socket = Socket}};
 
 handle_cast(_Msg, State) ->
     {noreply, State}.
