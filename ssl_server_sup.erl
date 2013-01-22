@@ -19,11 +19,11 @@
 -define(SERVER, ?MODULE).
 
 -define(SSLOPTIONS, [{certfile, "/path/to/certificate.pem"},
-                     {keyfile, "/path/to/key.pem"},
+                     {keyfile,  "/path/to/key.pem"},
                      {password, "password"},
                      {mode, binary},
                      {packet, 0},
-                     {backlog, 5},
+                     {backlog, 15},
                      {active, false}]).
 
 %%%===================================================================
@@ -86,5 +86,5 @@ start_socket() ->
     supervisor:start_child(?SERVER, []).
 
 empty_listeners() ->
-    [start_socket() || _ <- lists:seq(1, 4)],
+    [start_socket() || _ <- lists:seq(1, 100)],
     ok.
