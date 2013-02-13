@@ -18,8 +18,10 @@
 	 terminate/2, code_change/3]).
 
 -define(SERVER, ?MODULE). 
+-define(SSLHANDLERS, {pubsub, sslbroadcast}).
+-define(MAX_STANDBY, 15 * 60 * 1000).
 
--record(state, {next, socket}).
+-record(state, {buffer = <<>>, socket, tref}).
 
 %%%===================================================================
 %%% API
@@ -83,16 +85,16 @@ handle_call(_Request, _From, State) ->
 %% @end
 %%--------------------------------------------------------------------
 handle_cast(accept, #state{socket = LSocket} = State) ->
-    ssl:setopts(LSocket, [{active, false}]),
+    %% Set again socket in active mode, SSL bug?
+    %% Check it using: io:format("~p~n", [ssl:getopts(LSocket, [active])]),
+    ssl:setopts(LSocket, [{active, once}]),
     {ok, NewSocket} = ssl:transport_accept(LSocket),
     ok = ssl:ssl_accept(NewSocket),
     ssl_server_sup:start_socket(),
-    gen_server:cast(self(), rcv_headers),
-    {noreply, State#state{next = headers, socket = NewSocket}};
-
-%handle_cast(get_headers, #state{next = headers, socket = Socket} = State) ->
-%    Headers = ssl:recv(Socket, 3),
-%    {noreply, State#state{next = headers, socket = Socket}};
+     
+    gproc:reg({p, l, ?SSLHANDLERS}),
+    {ok, TRef} = erlang:send_after(?MAX_STANDBY, self(), disconnect),
+    {noreply, State#state{socket = NewSocket, tref = TRef}};
 
 handle_cast(_Msg, State) ->
     {noreply, State}.
@@ -107,6 +109,27 @@ handle_cast(_Msg, State) ->
 %%                                   {stop, Reason, State}
 %% @end
 %%--------------------------------------------------------------------
+handle_info({Pid, ?SSLHANDLERS, _Msg}, State) when Pid =:= self() ->
+    {noreply, State};
+
+handle_info({_Pid, ?SSLHANDLERS, Msg}, State) ->
+    io:format("Received message: ~p~n", [Msg]),
+    {noreply, State};
+
+handle_info({ssl, Socket, Data}, #state{buffer = Buffer, tref = TRef} = State) ->
+    erlang:cancel_timer(TRef),
+    ssl:setopts(Socket, [{active, once}]),
+    NewBuffer = parse_buffer(<<Buffer/binary, Data/binary>>),
+    {ok, TRef} = erlang:send_after(?MAX_STANDBY, self(), disconnect),
+    {noreply, State#state{buffer = NewBuffer, tref = TRef}};
+
+handle_info({ssl_closed, _Socket}, State) ->
+    {stop, normal, State};
+
+handle_info(disconnect, #state{socket = Socket} = State) ->
+    ssl:close(Socket), 
+    {stop, normal, State};
+
 handle_info(_Info, State) ->
     io:format("Received unknown message: ~p~n", [_Info]),
     {noreply, State}.
@@ -139,3 +162,14 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+parse_buffer(Buffer) ->
+    case Buffer of
+	<<1:8, PayloadSize:16/big, Payload:PayloadSize/binary-unit:8, Rest/binary>> ->
+	    forward_message(Payload),
+	    parse_buffer(Rest);
+	_ -> 
+	    Buffer
+    end.
+    
+forward_message(Message) ->
+    gproc:send({p, l, ?SSLHANDLERS}, {self(), ?SSLHANDLERS, Message}).

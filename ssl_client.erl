@@ -3,13 +3,13 @@
 -export([start/0, loop/3, test/1]).
 
 -define(SSLOPTIONS, [{certfile, "/path/to/certificate.pem"},
-                     {keyfile, "/path/to/test/key.pem"},
+                     {keyfile, "/path/to/key.pem"},
                      {password, "password"},
                      {mode, binary},
                      {packet, 0},
                      {active, false}]).
 
--define(MAX_CONN, 300).
+-define(MAX_CONN, 100).
  
 
 start() ->
@@ -33,8 +33,13 @@ loop(Success, Error, StartTime) ->
     end.
 
 test(Pid) -> 
-    case ssl:connect("localhost", 5555, ?SSLOPTIONS, 4000) of
-	{ok, _Socket} ->
+    case ssl:connect("localhost", 5555, ?SSLOPTIONS, 8000) of
+	{ok, Socket} ->
+	    Json = "{\"update\":{\"name\":\"player1\",\"position\":{\"x\":1,\"y\":1, \"dir\": \"n\"}}",
+	    Payload = list_to_binary(Json),
+	    PayloadSize = byte_size(Payload),
+	    ssl:send(Socket, <<1:8, PayloadSize:16>>),
+	    ssl:send(Socket, Payload),
 	    Pid ! success;
 	{error, _} ->
 	    Pid ! error

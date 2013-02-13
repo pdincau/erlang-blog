@@ -23,8 +23,8 @@
                      {password, "password"},
                      {mode, binary},
                      {packet, 0},
-                     {backlog, 15},
-                     {active, false}]).
+                     {backlog, 1000},
+                     {active, true}]).
 
 %%%===================================================================
 %%% API functions
@@ -60,6 +60,7 @@ start_link() ->
 init([]) ->
     ssl:start(),
     
+    
     {ok, LSocket} = ssl:listen(5555, ?SSLOPTIONS),
 
     spawn_link(fun empty_listeners/0),
@@ -86,5 +87,5 @@ start_socket() ->
     supervisor:start_child(?SERVER, []).
 
 empty_listeners() ->
-    [start_socket() || _ <- lists:seq(1, 100)],
+    [start_socket() || _ <- lists:seq(1, 2000)],
     ok.
